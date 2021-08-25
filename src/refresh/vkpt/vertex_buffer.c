@@ -262,7 +262,7 @@ inject_model_lights(bsp_mesh_t* bsp_mesh, bsp_t* bsp, int num_model_lights, ligh
 }
 
 static inline void
-copy_light(const light_poly_t* light, float* vblight, const float* sky_radiance)
+copy_light(const light_poly_t* light, float* vblight, float* vblightpos, const float* sky_radiance)
 {
 	float style_scale = 1.f;
 	float prev_style = 1.f;
@@ -277,9 +277,40 @@ copy_light(const light_poly_t* light, float* vblight, const float* sky_radiance)
 
 	float mat_scale = light->material ? light->material->emissive_factor : 1.f;
 
-	VectorCopy(light->positions + 0, vblight + 0);
-	VectorCopy(light->positions + 3, vblight + 4);
-	VectorCopy(light->positions + 6, vblight + 8);
+	const float* v0 = light->positions + 0;
+	const float* v1 = light->positions + 3;
+	const float* v2 = light->positions + 6;
+
+	VectorCopy(v0, vblight + 0);
+	VectorCopy(v1, vblight + 4);
+	VectorCopy(v2, vblight + 8);
+
+	// Compute the normal
+
+	vec3_t e1, e2, normal;
+	VectorSubtract(v1, v0, e1);
+	VectorSubtract(v2, v0, e2);
+	CrossProduct(e1, e2, normal);
+	float length = VectorNormalize(normal);
+	
+	// Offset the polygon along the normal a little bit
+	// to make it intersect with rays before the underlying geometry.
+	// Store that in a separate position buffer that has vertex stride
+	// compatible with acceleration structure builds.
+	
+	if (length > 0)
+	{
+		VectorScale(normal, 0.01f, normal);
+		VectorAdd(v0, normal, vblightpos + 0);
+		VectorAdd(v1, normal, vblightpos + 3);
+		VectorAdd(v2, normal, vblightpos + 6);
+	}
+	else
+	{
+		VectorCopy(v0, vblightpos + 0);
+		VectorCopy(v1, vblightpos + 3);
+		VectorCopy(v2, vblightpos + 6);
+	}
 
 	if (light->color[0] < 0.f)
 	{
@@ -339,14 +370,16 @@ vkpt_light_buffer_upload_to_staging(qboolean render_world, bsp_mesh_t *bsp_mesh,
 		{
 			light_poly_t* light = bsp_mesh->light_polys + nlight;
 			float* vblight = lbo->light_polys + nlight * (LIGHT_POLY_VEC4S * 4);
-			copy_light(light, vblight, sky_radiance);
+			float* vblightpos = lbo->light_positions + nlight * 9;
+			copy_light(light, vblight, vblightpos, sky_radiance);
 		}
 
 		for (int nlight = 0; nlight < num_model_lights; nlight++)
 		{
 			light_poly_t* light = transformed_model_lights + nlight;
 			float* vblight = lbo->light_polys + (nlight + model_light_offset) * (LIGHT_POLY_VEC4S * 4);
-			copy_light(light, vblight, sky_radiance);
+			float* vblightpos = lbo->light_positions + (nlight + model_light_offset) * 9;
+			copy_light(light, vblight, vblightpos, sky_radiance);
 		}
 	}
 	else
@@ -709,7 +742,7 @@ vkpt_vertex_buffer_create()
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	buffer_create(&qvk.buf_light, sizeof(LightBuffer),
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	for (int frame = 0; frame < MAX_FRAMES_IN_FLIGHT; frame++)

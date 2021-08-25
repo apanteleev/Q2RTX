@@ -2719,6 +2719,8 @@ R_RenderFrame_RTX(refdef_t *fd)
 	vec3_t sky_radiance;
 	VectorScale(avg_envmap_color, ubo->pt_env_scale, sky_radiance);
 	vkpt_light_buffer_upload_to_staging(render_world, &vkpt_refdef.bsp_mesh_world, bsp_world_model, num_model_lights, model_lights, sky_radiance);
+
+	upload_info.num_light_polys = vkpt_refdef.bsp_mesh_world.num_light_polys + num_model_lights;
 	
 	float shadowmap_view_proj[16];
 	float shadowmap_depth_scale;

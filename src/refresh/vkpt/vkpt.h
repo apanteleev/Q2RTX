@@ -491,6 +491,7 @@ typedef struct EntityUploadInfo
 	uint32_t viewer_weapon_vertex_num;
 	uint32_t explosions_vertex_offset;
 	uint32_t explosions_vertex_num;
+	uint32_t num_light_polys;
 	qboolean weapon_left_handed;
 } EntityUploadInfo;
 

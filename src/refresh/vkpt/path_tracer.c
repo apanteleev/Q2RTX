@@ -33,7 +33,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #define SIZE_SCRATCH_BUFFER (1 << 25)
 
-#define INSTANCE_MAX_NUM 14
+#define INSTANCE_MAX_NUM 15
 
 static uint32_t shaderGroupHandleSize = 0;
 static uint32_t shaderGroupBaseAlignment = 0;
@@ -95,6 +95,7 @@ static blas_t                     blas_explosions[MAX_FRAMES_IN_FLIGHT];
 static blas_t                     blas_particles[MAX_FRAMES_IN_FLIGHT];
 static blas_t                     blas_beams[MAX_FRAMES_IN_FLIGHT];
 static blas_t                     blas_sprites[MAX_FRAMES_IN_FLIGHT];
+static blas_t                     blas_lights[MAX_FRAMES_IN_FLIGHT];
 
 static VkAccelerationStructureKHR accel_top[MAX_FRAMES_IN_FLIGHT];
 static accel_top_match_info_t     accel_top_match[MAX_FRAMES_IN_FLIGHT];
@@ -380,6 +381,7 @@ static void vkpt_pt_destroy_dynamic(int idx)
 	destroy_blas(&blas_particles[idx]);
 	destroy_blas(&blas_beams[idx]);
 	destroy_blas(&blas_sprites[idx]);
+	destroy_blas(&blas_lights[idx]);
 }
 
 static inline int accel_matches(accel_bottom_match_info_t *match,
@@ -770,6 +772,9 @@ vkpt_pt_create_all_dynamic(
 	vkpt_get_transparency_buffers(VKPT_TRANSPARENCY_SPRITES, &buffer_vertex, &offset_vertex, &buffer_index, &offset_index, &num_vertices, &num_indices);
 	vkpt_pt_create_accel_bottom(cmd_buf, buffer_vertex, offset_vertex, buffer_index, offset_index, num_vertices, num_indices, blas_sprites + idx, qtrue, qtrue);
 
+	vkpt_pt_create_accel_bottom(cmd_buf, &qvk.buf_light, offsetof(LightBuffer, light_positions), NULL, 0, 
+		upload_info->num_light_polys * 3, 0, blas_lights + idx, qtrue, qtrue);
+
 	MEM_BARRIER_BUILD_ACCEL(cmd_buf);
 	scratch_buf_ptr = 0;
 
@@ -838,7 +843,8 @@ vkpt_pt_create_toplevel(VkCommandBuffer cmd_buf, int idx, qboolean include_world
 	append_blas(instances, &num_instances, &blas_transparent_models[idx], AS_INSTANCE_FLAG_DYNAMIC | transparent_model_primitive_offset, AS_FLAG_TRANSPARENT, VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR, SBTO_OPAQUE);
 	append_blas(instances, &num_instances, &blas_masked_models[idx], AS_INSTANCE_FLAG_DYNAMIC | masked_model_primitive_offset, AS_FLAG_OPAQUE, VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR | VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR, SBTO_MASKED);
 	append_blas(instances, &num_instances, &blas_explosions[idx], AS_INSTANCE_FLAG_DYNAMIC | explosions_primitive_offset, AS_FLAG_EFFECTS, 0, SBTO_EXPLOSION);
-    append_blas(instances, &num_instances, &blas_viewer_weapon[idx], AS_INSTANCE_FLAG_DYNAMIC | viewer_weapon_primitive_offset, AS_FLAG_VIEWER_WEAPON, VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR | (weapon_left_handed ? VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR : 0), SBTO_OPAQUE);
+	append_blas(instances, &num_instances, &blas_viewer_weapon[idx], AS_INSTANCE_FLAG_DYNAMIC | viewer_weapon_primitive_offset, AS_FLAG_VIEWER_WEAPON, VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR | (weapon_left_handed ? VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR : 0), SBTO_OPAQUE);
+	append_blas(instances, &num_instances, &blas_lights[idx], AS_INSTANCE_FLAG_DYNAMIC | AS_INSTANCE_FLAG_SKY, AS_FLAG_LIGHTS, VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR, SBTO_OPAQUE);
 
 	if (cl_player_model->integer == CL_PLAYER_MODEL_FIRST_PERSON)
 	{

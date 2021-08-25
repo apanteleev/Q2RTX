@@ -87,6 +87,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	VERTEX_BUFFER_LIST_DO(uint32_t, 1, light_list_offsets,    (MAX_LIGHT_LISTS     )) \
 	VERTEX_BUFFER_LIST_DO(uint32_t, 1, light_list_lights,     (MAX_LIGHT_LIST_NODES)) \
 	VERTEX_BUFFER_LIST_DO(float,    1, light_styles,          (MAX_LIGHT_STYLES    )) \
+	VERTEX_BUFFER_LIST_DO(float,    3, light_positions,       (MAX_LIGHT_POLYS * 3 )) \
 	VERTEX_BUFFER_LIST_DO(uint32_t, 1, cluster_debug_mask,    (MAX_LIGHT_LISTS / 32)) \
 
 #define IQM_MATRIX_BUFFER_LIST \
