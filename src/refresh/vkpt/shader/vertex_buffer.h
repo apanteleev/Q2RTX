@@ -223,6 +223,8 @@ struct LightPolygon
 	vec3 color;
 	float light_style_scale;
 	float prev_style_scale;
+	int cluster;
+	int material_index;
 };
 
 #ifdef VERTEX_READONLY
@@ -588,7 +590,38 @@ get_light_polygon(uint index)
 	light.color = vec3(p0.w, p1.w, p2.w);
 	light.light_style_scale = p3.x;
 	light.prev_style_scale = p3.y;
+	light.cluster = int(p3.z);
+	light.material_index = int(p3.w);
 	return light;
+}
+
+Triangle
+get_light_triangle(LightPolygon light)
+{
+	Triangle t;
+	t.positions = light.positions;
+	t.positions_prev = light.positions;
+
+	vec3 normal = cross(t.positions[1] - t.positions[0], t.positions[2] - t.positions[1]);
+	t.normals[0] = normal;
+	t.normals[1] = normal;
+	t.normals[2] = normal;
+
+	t.tangents[0] = vec3(0);
+	t.tangents[1] = vec3(0);
+	t.tangents[2] = vec3(0);
+
+	t.tex_coords[0] = vec2(0);
+	t.tex_coords[1] = vec2(0);
+	t.tex_coords[2] = vec2(0);
+
+	t.material_id = (light.material_index >= 0) ? (MATERIAL_FLAG_LIGHT | uint(light.material_index)) : 0;
+	t.cluster = light.cluster;
+	t.alpha = 0;
+	t.texel_density = 0;
+	t.emissive_factor = 1.f;
+
+	return t;
 }
 
 mat3x4

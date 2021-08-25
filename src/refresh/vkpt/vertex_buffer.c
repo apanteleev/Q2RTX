@@ -327,8 +327,8 @@ copy_light(const light_poly_t* light, float* vblight, float* vblightpos, const f
 
 	vblight[12] = style_scale;
 	vblight[13] = prev_style;
-	vblight[14] = 0.f;
-	vblight[15] = 0.f;
+	vblight[14] = (float)light->cluster;
+	vblight[15] = light->material ? (float)(light->material - r_materials) : -1.f;
 }
 
 extern vkpt_refdef_t vkpt_refdef;

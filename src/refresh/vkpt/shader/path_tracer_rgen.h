@@ -152,6 +152,12 @@ found_intersection(RayPayload rp)
 }
 
 bool
+is_light(RayPayload rp)
+{
+	return (rp.instance_prim & INSTANCE_LIGHT_FLAG) != 0;
+}
+
+bool
 is_sky(RayPayload rp)
 {
 	return (rp.instance_prim & INSTANCE_SKY_FLAG) != 0;

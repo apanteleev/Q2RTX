@@ -152,7 +152,7 @@ main()
 	{
 		int cull_mask = PRIMARY_RAY_CULL_MASK;
 		
-		if(global_ubo.pt_show_sky != 0)
+		if(global_ubo.pt_show_lights != 0)
 			cull_mask |= AS_FLAG_LIGHTS;
 
 		trace_ray(ray, true, cull_mask, false);
@@ -160,9 +160,9 @@ main()
 
 	direction = ray.direction;
 
-	// If the primary ray didn't hit anything, or it hit a sky polygon and pt_show_sky is disabled, 
+	// If the primary ray didn't hit anything, or it hit a sky polygon, 
 	// store the sky color and motion vectors. Doesn't apply to gradient samples because their rays intentionally miss.
-	if((!found_intersection(ray_payload_brdf) || (is_sky(ray_payload_brdf) && (global_ubo.pt_show_sky == 0))))
+	if(!found_intersection(ray_payload_brdf) || is_sky(ray_payload_brdf))
 	{
 		vec3 env = env_map(ray.direction, false);	
 		env *= global_ubo.pt_env_scale;
@@ -193,12 +193,34 @@ main()
 		imageStore(IMG_PT_MOTION, ipos, vec4(motion, 0, 0));
 		imageStore(IMG_PT_VISBUF_A, ipos, uvec4(0));
 		imageStore(IMG_PT_ALBEDO, ipos, vec4(0));
+		
+		if((global_ubo.pt_show_sky != 0) && found_intersection(ray_payload_brdf))
+		{
+			uint cluster = get_clusters_bsp(get_primitive(ray_payload_brdf));
+			
+			if(is_readback_pixel)
+			{
+				readback.material = ~0u;
+				readback.cluster = cluster;
+			}
+
+			vec3 bary = get_hit_barycentric(ray_payload_brdf);
+			if (any(lessThan(bary, vec3(0.02))))
+			{
+				imageStore(IMG_PT_TRANSPARENT, ipos, vec4(1,0,0,0.1));
+				return;
+			}
+		}
+			
 		imageStore(IMG_PT_TRANSPARENT, ipos, transparent);
+
 		return;
 	}
 
+
 	Triangle triangle;
 	vec3 bary;
+	vec3 light_color = vec3(0);
 
 	{
 		bool is_dynamic_primitive = is_dynamic_instance(ray_payload_brdf);
@@ -213,7 +235,16 @@ main()
 		
 		imageStore(IMG_PT_VISBUF_A, ipos, uvec4(vis_buf, 0, 0));
 		
-		if(is_dynamic_primitive)
+		if (is_light(ray_payload_brdf))
+		{
+			LightPolygon light_poly = get_light_polygon(get_primitive(ray_payload_brdf));
+			triangle = get_light_triangle(light_poly);
+			if (light_poly.color.x < 0)
+				light_color = env_map(ray.direction, false) * global_ubo.pt_env_scale;
+			else
+				light_color = light_poly.color * light_poly.light_style_scale;
+		}
+		else if(is_dynamic_primitive)
 			triangle = get_instanced_triangle(primitive_id);
 		else
 			triangle = get_bsp_triangle(primitive_id);
@@ -221,7 +252,7 @@ main()
 
 	if(is_readback_pixel)
 	{
-		readback.material = triangle.material_id;
+		readback.material = triangle.material_id != 0 ? triangle.material_id : ~0u;
 		readback.cluster = triangle.cluster;
 	}
 
@@ -300,6 +331,8 @@ main()
     	primary_specular,
     	primary_roughness,
     	primary_emissive);
+
+    primary_emissive += light_color;
 
     // Extinction in the primary ray
 	if(global_ubo.medium != MEDIUM_NONE)
@@ -438,21 +471,10 @@ main()
 		}
 	}
 
-	if(global_ubo.pt_show_sky != 0 && is_sky(ray_payload_brdf))
+	if(global_ubo.pt_show_lights != 0 && is_light(ray_payload_brdf) && any(lessThan(bary, vec3(0.02))))
 	{
-		// show additional information about sky boxes: triangle edges...
-		if(any(lessThan(bary, vec3(0.02))))
-		{
-			imageStore(IMG_PT_TRANSPARENT, ipos, vec4(1,0,0,0.1));
-			return;
-		}
-
-		// ... and light flags
-		if((triangle.material_id & MATERIAL_FLAG_LIGHT) != 0)
-		{
-			imageStore(IMG_PT_TRANSPARENT, ipos, vec4(0,0,1,0.1));
-			return;
-		}
+		imageStore(IMG_PT_TRANSPARENT, ipos, vec4(0,0,1,0.1));
+		return;
 	}
 
 	float hit_distance = ray_payload_brdf.hit_distance;

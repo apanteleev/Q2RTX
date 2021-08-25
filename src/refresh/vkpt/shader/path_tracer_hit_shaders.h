@@ -33,13 +33,21 @@ void pt_logic_rchit(inout RayPayload ray_payload, int primitiveID, uint instance
 {
 	ray_payload.barycentric    = bary.xy;
 	ray_payload.instance_prim  = primitiveID + instanceCustomIndex & AS_INSTANCE_MASK_OFFSET;
-	if((instanceCustomIndex & AS_INSTANCE_FLAG_DYNAMIC) != 0)
+
+	if((instanceCustomIndex & (AS_INSTANCE_FLAG_DYNAMIC | AS_INSTANCE_FLAG_SKY)) == (AS_INSTANCE_FLAG_DYNAMIC | AS_INSTANCE_FLAG_SKY))
 	{
-		ray_payload.instance_prim |= INSTANCE_DYNAMIC_FLAG;
+		ray_payload.instance_prim |= INSTANCE_LIGHT_FLAG;
 	}
-	if((instanceCustomIndex & AS_INSTANCE_FLAG_SKY) != 0)
+	else
 	{
-		ray_payload.instance_prim |= INSTANCE_SKY_FLAG;
+		if((instanceCustomIndex & AS_INSTANCE_FLAG_DYNAMIC) != 0)
+		{
+			ray_payload.instance_prim |= INSTANCE_DYNAMIC_FLAG;
+		}
+		if((instanceCustomIndex & AS_INSTANCE_FLAG_SKY) != 0)
+		{
+			ray_payload.instance_prim |= INSTANCE_SKY_FLAG;
+		}
 	}
 	ray_payload.hit_distance   = hitT;
 }
