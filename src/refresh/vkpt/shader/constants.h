@@ -113,12 +113,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #define AS_FLAG_OPAQUE          (1 << 0)
 #define AS_FLAG_TRANSPARENT     (1 << 1)
-#define AS_FLAG_PARTICLES       (1 << 2)
+#define AS_FLAG_EFFECTS         (1 << 2)
 #define AS_FLAG_VIEWER_MODELS   (1 << 3)
 #define AS_FLAG_VIEWER_WEAPON   (1 << 4)
-#define AS_FLAG_EXPLOSIONS      (1 << 5)
-#define AS_FLAG_SKY             (1 << 6)
-#define AS_FLAG_CUSTOM_SKY      (1 << 7)
+#define AS_FLAG_SKY             (1 << 5)
+#define AS_FLAG_LIGHTS          (1 << 6)
 #define AS_FLAG_EVERYTHING      0xFF
 
 #define AS_INSTANCE_FLAG_DYNAMIC        (1 << 23)

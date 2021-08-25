@@ -203,7 +203,7 @@ indirect_lighting(
 	int bounce_cull_mask = BOUNCE_RAY_CULL_MASK;
 	int shadow_cull_mask = SHADOW_RAY_CULL_MASK;
 	if(is_specular_ray)
-		bounce_cull_mask |= AS_FLAG_EXPLOSIONS;
+		bounce_cull_mask |= AS_FLAG_EFFECTS;
 	if(global_ubo.first_person_model != 0 && !primary_is_weapon)
 	{
 		bounce_cull_mask |= AS_FLAG_VIEWER_MODELS;

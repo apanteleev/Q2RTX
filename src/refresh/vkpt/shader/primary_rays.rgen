@@ -153,7 +153,7 @@ main()
 		int cull_mask = PRIMARY_RAY_CULL_MASK;
 		
 		if(global_ubo.pt_show_sky != 0)
-			cull_mask |= AS_FLAG_CUSTOM_SKY;
+			cull_mask |= AS_FLAG_LIGHTS;
 
 		trace_ray(ray, true, cull_mask, false);
 	}
@@ -474,7 +474,7 @@ main()
 	ray.t_max = hit_distance;
 
 	{
-		int cull_mask = AS_FLAG_PARTICLES | AS_FLAG_EXPLOSIONS;
+		int cull_mask = AS_FLAG_EFFECTS;
 		trace_ray(ray, true, cull_mask, false);
 	}
 
