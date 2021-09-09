@@ -116,6 +116,9 @@ static qboolean frame_ready = qfalse;
 static float sky_rotation = 0.f;
 static vec3_t sky_axis = { 0.f };
 
+static vec3_t fog_color = { 0.f };
+static float fog_density = 0.f;
+
 #define NUM_TAA_SAMPLES 128
 static vec2_t taa_samples[NUM_TAA_SAMPLES];
 
@@ -2503,6 +2506,9 @@ prepare_ubo(refdef_t *fd, mleaf_t* viewleaf, const reference_mode_t* ref_mode, c
 	ubo->num_static_primitives = (vkpt_refdef.bsp_mesh_world.world_idx_count + vkpt_refdef.bsp_mesh_world.world_transparent_count + vkpt_refdef.bsp_mesh_world.world_masked_count) / 3;
 	ubo->num_static_lights = vkpt_refdef.bsp_mesh_world.num_light_polys;
 
+	VectorCopy(fog_color, ubo->fog_color);
+	ubo->fog_density = fog_density;
+
 #define UBO_CVAR_DO(name, default_value) ubo->name = cvar_##name->value;
 	UBO_CVAR_LIST
 #undef UBO_CVAR_DO
@@ -3311,6 +3317,54 @@ vkpt_show_pvs(void)
 	cluster_debug_index = vkpt_refdef.fd->feedback.lookatcluster;
 }
 
+static void
+vkpt_set_fog()
+{
+	if (Cmd_Argc() < 2 || Q_stricmp(Cmd_Argv(1), "help") == 0)
+	{
+		Com_Printf("expected arguments: fog <parameter> <values...>\n");
+		Com_Printf("supported parameters:\n");
+		Com_Printf("    color <r> <g> <b>\n");
+		Com_Printf("    distance <d> -- distance at which fog transparency is 50%\n");
+		return;
+	}
+
+	if (Q_stricmp(Cmd_Argv(1), "color") == 0)
+	{
+		if (Cmd_Argc() != 5)
+		{
+			Com_Printf("fog color expects 3 values: <r> <g> <b>\n");
+			return;
+		}
+
+		fog_color[0] = atof(Cmd_Argv(2));
+		fog_color[1] = atof(Cmd_Argv(3));
+		fog_color[2] = atof(Cmd_Argv(4));
+		clamp(fog_color[0], 0.f, 1.f);
+		clamp(fog_color[1], 0.f, 1.f);
+		clamp(fog_color[2], 0.f, 1.f);
+		return;
+	}
+
+	if (Q_stricmp(Cmd_Argv(1), "distance") == 0)
+	{
+		if (Cmd_Argc() != 3)
+		{
+			Com_Printf("fog density expects one value\n");
+			return;
+		}
+
+		float distance = atof(Cmd_Argv(2));
+		if (distance <= 0.f)
+			fog_density = 0.f;
+		else
+			fog_density = 0.6931f / distance; // the constant is -log(50%)
+		return;
+	}
+
+	Com_Printf("unrecognized parameter '%s'\n", Cmd_Argv(1));
+}
+
 static float halton(int base, int index) {
 	float f = 1.f;
 	float r = 0.f;
@@ -3488,6 +3542,7 @@ R_Init_RTX(qboolean total)
 	Cmd_AddCommand("reload_textures", (xcommand_t)&vkpt_reload_textures);
 	Cmd_AddCommand("show_pvs", (xcommand_t)&vkpt_show_pvs);
 	Cmd_AddCommand("next_sun", (xcommand_t)&vkpt_next_sun_preset);
+	Cmd_AddCommand("fog", (xcommand_t)&vkpt_set_fog);
 #if CL_RTX_SHADERBALLS
 	Cmd_AddCommand("drop_balls", (xcommand_t)&vkpt_drop_shaderballs);
 #endif

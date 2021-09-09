@@ -484,8 +484,9 @@ main()
 	trace_ray(reflection_ray, backface_culling, reflection_cull_mask, false);
 
 	// Add the transparency encountered along the reflection ray
-	vec4 payload_transparency = get_payload_transparency_simple(ray_payload_brdf);
-	transparent = alpha_blend(transparent, payload_transparency * vec4(throughput, 1));
+	vec4 payload_transparency = get_payload_transparency(ray_payload_brdf,
+		is_sky(ray_payload_brdf) ? reflection_ray.t_max : ray_payload_brdf.hit_distance);
+	transparent = alpha_blend_premultiplied(transparent, payload_transparency * vec4(throughput, 1));
 
 	if(is_sky(ray_payload_brdf))
 	{

@@ -167,7 +167,7 @@ main()
 		vec3 env = env_map(ray.direction, false);	
 		env *= global_ubo.pt_env_scale;
 		
-		vec4 ray_transparency = get_payload_transparency_simple(ray_payload_brdf);
+		vec4 ray_transparency = get_payload_transparency(ray_payload_brdf, ray.t_max);
 		vec4 transparent = alpha_blend(ray_transparency, vec4(env, 1));
 
 		if(is_readback_pixel)
