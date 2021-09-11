@@ -3620,6 +3620,7 @@ R_Shutdown_RTX(qboolean total)
 	Cmd_RemoveCommand("reload_textures");
 	Cmd_RemoveCommand("show_pvs");
 	Cmd_RemoveCommand("next_sun");
+	Cmd_RemoveCommand("fog");
 #if CL_RTX_SHADERBALLS
 	Cmd_RemoveCommand("drop_balls");
 #endif
