@@ -72,11 +72,8 @@ vec4 get_fog_color(vec3 origin, vec3 dir, float t1, float t2)
 	return vec4(global_ubo.fog_color * alpha * intensity, alpha);
 }
 
-void update_payload_transparency(inout RayPayload rp, vec3 origin, vec3 direction, vec4 color, float depth, float hitT)
+void update_payload_transparency(inout RayPayload rp, vec3 origin, vec3 direction, vec4 color, float thickness, float hitT)
 {
-	if (color.a <= 0)
-		return;
-
 	if(hitT > rp.farthest_transparent_distance)
 	{
 		vec4 farthest_transparency = unpackHalf4x16(rp.farthest_transparency);
@@ -90,7 +87,7 @@ void update_payload_transparency(inout RayPayload rp, vec3 origin, vec3 directio
 		rp.closest_max_transparent_distance = rp.farthest_transparent_distance;
 		rp.farthest_transparency = packHalf4x16(color);
 		rp.farthest_transparent_distance = hitT;
-		rp.farthest_transparent_depth = depth;
+		rp.farthest_transparent_depth = thickness;
 	}
 	else if(rp.closest_max_transparent_distance < hitT)
 	{
