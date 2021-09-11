@@ -198,6 +198,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	GLOBAL_UBO_VAR_LIST_DO(vec3,            fog_color) \
 	GLOBAL_UBO_VAR_LIST_DO(float,           fog_density) \
 	\
+	GLOBAL_UBO_VAR_LIST_DO(float,           fog_mean_height) \
+	GLOBAL_UBO_VAR_LIST_DO(float,           fog_thickness) \
+	GLOBAL_UBO_VAR_LIST_DO(float,           fog_inv_thickness) \
+	GLOBAL_UBO_VAR_LIST_DO(float,           fog_range) \
+	\
 	GLOBAL_UBO_VAR_LIST_DO(vec4,            world_center) \
 	GLOBAL_UBO_VAR_LIST_DO(vec4,            world_size) \
 	GLOBAL_UBO_VAR_LIST_DO(vec4,            world_half_size_inv) \

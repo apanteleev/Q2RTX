@@ -304,7 +304,7 @@ trace_ray(Ray ray, bool cull_back_faces, int instance_mask, bool skip_procedural
 				// Then the any-hit shader.
 				if (intersectsWithBeam)
 				{
-					pt_logic_beam(ray_payload_brdf, primitiveID, beam_fade_and_thickness, tShapeHit);
+					pt_logic_beam(ray_payload_brdf, ray.origin, ray.direction, primitiveID, beam_fade_and_thickness, tShapeHit);
 				}
 			}
 		}
@@ -318,15 +318,15 @@ trace_ray(Ray ray, bool cull_back_faces, int instance_mask, bool skip_procedural
 				break;
 
 			case SBTO_PARTICLE: // particles
-				pt_logic_particle(ray_payload_brdf, primitiveID, hitT, bary);
+				pt_logic_particle(ray_payload_brdf, ray.origin, ray.direction, primitiveID, hitT, bary);
 				break;
 
 			case SBTO_EXPLOSION: // explosions
-				pt_logic_explosion(ray_payload_brdf, primitiveID, instanceCustomIndex, hitT, ray.direction, bary);
+				pt_logic_explosion(ray_payload_brdf, ray.origin, ray.direction, primitiveID, instanceCustomIndex, hitT, ray.direction, bary);
 				break;
 
 			case SBTO_SPRITE: // sprites
-				pt_logic_sprite(ray_payload_brdf, primitiveID, hitT, bary);
+				pt_logic_sprite(ray_payload_brdf, ray.origin, ray.direction, primitiveID, hitT, bary);
 				break;
 			}
 		}

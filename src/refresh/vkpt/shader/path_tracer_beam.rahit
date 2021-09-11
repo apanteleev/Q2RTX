@@ -39,7 +39,7 @@ void main()
 {
 	const vec2 beam_fade_and_thickness = unpackHalf2x16(beam_hit_attrib.fade_and_thickness);
 
-	pt_logic_beam(ray_payload, gl_PrimitiveID, beam_fade_and_thickness, gl_HitTEXT);
+	pt_logic_beam(ray_payload, gl_WorldRayOriginEXT, gl_WorldRayDirectionEXT, gl_PrimitiveID, beam_fade_and_thickness, gl_HitTEXT);
 	
 	ignoreIntersectionEXT;
 }

@@ -118,6 +118,9 @@ static vec3_t sky_axis = { 0.f };
 
 static vec3_t fog_color = { 0.f };
 static float fog_density = 0.f;
+static float fog_mean_height = 0.f;
+static float fog_thickness = 100.f;
+static float fog_range = 2000.f;
 
 #define NUM_TAA_SAMPLES 128
 static vec2_t taa_samples[NUM_TAA_SAMPLES];
@@ -2508,6 +2511,13 @@ prepare_ubo(refdef_t *fd, mleaf_t* viewleaf, const reference_mode_t* ref_mode, c
 
 	VectorCopy(fog_color, ubo->fog_color);
 	ubo->fog_density = fog_density;
+	ubo->fog_mean_height = fog_mean_height;
+	ubo->fog_thickness = fog_thickness;
+	ubo->fog_inv_thickness = 1.f / fog_thickness;
+	if (fog_thickness > 0.f && fog_density > 0.f)
+		ubo->fog_range = fog_range;
+	else
+		ubo->fog_range = -1.f;
 
 #define UBO_CVAR_DO(name, default_value) ubo->name = cvar_##name->value;
 	UBO_CVAR_LIST
@@ -3326,6 +3336,8 @@ vkpt_set_fog()
 		Com_Printf("supported parameters:\n");
 		Com_Printf("    color <r> <g> <b>\n");
 		Com_Printf("    distance <d> -- distance at which fog transparency is 50%\n");
+		Com_Printf("    height <h> -- height in world space (Z axis) where fog is densest\n");
+		Com_Printf("    thickness <t> -- distance from the maximum density plane where fog is TBD% thinner\n");
 		return;
 	}
 
@@ -3359,6 +3371,42 @@ vkpt_set_fog()
 			fog_density = 0.f;
 		else
 			fog_density = 0.6931f / distance; // the constant is -log(50%)
+		return;
+	}
+
+	if (Q_stricmp(Cmd_Argv(1), "height") == 0)
+	{
+		if (Cmd_Argc() != 3)
+		{
+			Com_Printf("fog height expects one value\n");
+			return;
+		}
+
+		fog_mean_height = atof(Cmd_Argv(2));
+		return;
+	}
+	
+	if (Q_stricmp(Cmd_Argv(1), "thickness") == 0)
+	{
+		if (Cmd_Argc() != 3)
+		{
+			Com_Printf("fog thickness expects one value\n");
+			return;
+		}
+
+		fog_thickness = atof(Cmd_Argv(2));
+		return;
+	}
+
+	if (Q_stricmp(Cmd_Argv(1), "range") == 0)
+	{
+		if (Cmd_Argc() != 3)
+		{
+			Com_Printf("fog range expects one value\n");
+			return;
+		}
+
+		fog_range = atof(Cmd_Argv(2));
 		return;
 	}
 

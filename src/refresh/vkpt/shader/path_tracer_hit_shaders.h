@@ -67,7 +67,7 @@ bool pt_logic_masked(int primitiveID, uint instanceCustomIndex, vec2 bary)
 	return mask_value.x >= 0.5;
 }
 
-void pt_logic_particle(inout RayPayload ray_payload, int primitiveID, float hitT, vec2 bary)
+void pt_logic_particle(inout RayPayload ray_payload, vec3 origin, vec3 direction, int primitiveID, float hitT, vec2 bary)
 {
 	const vec3 barycentric = vec3(1.0 - bary.x - bary.y, bary.x, bary.y);
 	const vec2 uv = vec2(0.0, 0.0) * barycentric.x + vec2(1.0, 0.0) * barycentric.y + vec2(1.0, 1.0) * barycentric.z;
@@ -83,11 +83,11 @@ void pt_logic_particle(inout RayPayload ray_payload, int primitiveID, float hitT
 
 		color.rgb *= global_ubo.prev_adapted_luminance * 500;
 
-		update_payload_transparency(ray_payload, color, 0, hitT);
+		update_payload_transparency(ray_payload, origin, direction, color, 0, hitT);
 	}
 }
 
-void pt_logic_beam(inout RayPayload ray_payload, int primitiveID, vec2 beam_fade_and_thickness, float hitT)
+void pt_logic_beam(inout RayPayload ray_payload, vec3 origin, vec3 direction, int primitiveID, vec2 beam_fade_and_thickness, float hitT)
 {
 	const float x = beam_fade_and_thickness.x;
 	const float factor = pow(clamp(x, 0.0, 1.0), global_ubo.pt_beam_softness);
@@ -107,11 +107,11 @@ void pt_logic_beam(inout RayPayload ray_payload, int primitiveID, vec2 beam_fade
 	    float noise = texelFetch(TEX_BLUE_NOISE, ivec3(texpos, texnum), 0).r;
 	    color.rgb *= noise * noise + 0.1;
 
-		update_payload_transparency(ray_payload, color, beam_fade_and_thickness.y, hitT);
+		update_payload_transparency(ray_payload, origin, direction, color, beam_fade_and_thickness.y, hitT);
 	}
 }
 
-void pt_logic_sprite(inout RayPayload ray_payload, int primitiveID, float hitT, vec2 bary)
+void pt_logic_sprite(inout RayPayload ray_payload, vec3 origin, vec3 direction, int primitiveID, float hitT, vec2 bary)
 {
 	const vec3 barycentric = vec3(1.0 - bary.x - bary.y, bary.x, bary.y);
 	
@@ -139,10 +139,10 @@ void pt_logic_sprite(inout RayPayload ray_payload, int primitiveID, float hitT, 
 		color.rgb *= global_ubo.prev_adapted_luminance * 2000;
 	}
 
-	update_payload_transparency(ray_payload, color, 0, hitT);
+	update_payload_transparency(ray_payload, origin, direction, color, 0, hitT);
 }
 
-void pt_logic_explosion(inout RayPayload ray_payload, int primitiveID, uint instanceCustomIndex, float hitT, vec3 worldRayDirection, vec2 bary)
+void pt_logic_explosion(inout RayPayload ray_payload, vec3 origin, vec3 direction, int primitiveID, uint instanceCustomIndex, float hitT, vec3 worldRayDirection, vec2 bary)
 {
 	const uint primitive_id = primitiveID + instanceCustomIndex & AS_INSTANCE_MASK_OFFSET;
 	const Triangle triangle = get_instanced_triangle(primitive_id);
@@ -165,7 +165,7 @@ void pt_logic_explosion(inout RayPayload ray_payload, int primitiveID, uint inst
 
 	emission.rgb *= global_ubo.prev_adapted_luminance * 500;
 
-	update_payload_transparency(ray_payload, emission, 0, hitT);
+	update_payload_transparency(ray_payload, origin, direction, emission, 0, hitT);
 }
 
 // Adapted from: http://www.pbr-book.org/3ed-2018/Utilities/Mathematical_Routines.html#SolvingQuadraticEquations

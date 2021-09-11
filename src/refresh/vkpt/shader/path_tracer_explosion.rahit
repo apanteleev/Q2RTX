@@ -37,7 +37,7 @@ hitAttributeEXT vec2 hit_attribs;
 
 void main()
 {
-	pt_logic_explosion(ray_payload, gl_PrimitiveID, gl_InstanceCustomIndexEXT, gl_HitTEXT, gl_WorldRayDirectionEXT, hit_attribs.xy);
+	pt_logic_explosion(ray_payload, gl_WorldRayOriginEXT, gl_WorldRayDirectionEXT, gl_PrimitiveID, gl_InstanceCustomIndexEXT, gl_HitTEXT, gl_WorldRayDirectionEXT, hit_attribs.xy);
 
 	ignoreIntersectionEXT;
 }

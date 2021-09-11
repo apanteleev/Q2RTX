@@ -485,6 +485,7 @@ main()
 
 	// Add the transparency encountered along the reflection ray
 	vec4 payload_transparency = get_payload_transparency(ray_payload_brdf,
+		reflection_ray.origin, reflection_ray.direction,
 		is_sky(ray_payload_brdf) ? reflection_ray.t_max : ray_payload_brdf.hit_distance);
 	transparent = alpha_blend_premultiplied(transparent, payload_transparency * vec4(throughput, 1));
 
