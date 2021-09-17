@@ -17,6 +17,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 */
 
 #include "fog.h"
+#include "refresh/refresh.h"
+#include "shader/global_ubo.h"
 #include <common/prompt.h>
 
 #include <string.h>
@@ -165,4 +167,24 @@ void vkpt_fog_shutdown(void)
 void vkpt_fog_reset(void)
 {
 	memset(fog_volumes, 0, sizeof(fog_volumes));
+}
+
+void vkpt_fog_upload(ShaderFogVolume_t* dst)
+{
+	memset(dst, 0, sizeof(ShaderFogVolume_t) * MAX_FOG_VOLUMES);
+	
+	for (int i = 0; i < MAX_FOG_VOLUMES; i++)
+	{
+		const fog_volume_t* src = fog_volumes + i;
+		if (src->density <= 0.f || src->mins[0] >= src->maxs[0] || src->mins[1] >= src->maxs[1] || src->mins[2] >= src->maxs[2])
+			continue;
+
+		VectorCopy(src->color, dst->color);
+		VectorCopy(src->mins, dst->mins);
+		VectorCopy(src->maxs, dst->maxs);
+		Vector4Set(dst->density, 0.f, 0.f, 0.f, src->density); // TODO: gradient equation
+		dst->is_active = 1;
+
+		++dst;
+	}
 }

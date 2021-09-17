@@ -155,6 +155,9 @@ struct RayPayloadGeometry {
 struct RayPayloadEffects {
    uvec2 transparency; // half4x16
    uint distances; // half2x16 - min and max
+   uvec2 fog_color; // half4x16
+   uint fog_bounds; // half2x16 - t_min and t_max
+   uint fog_density; // half2x16 - a and b for (a*t + b)
 };
 
 struct HitAttributeBeam {

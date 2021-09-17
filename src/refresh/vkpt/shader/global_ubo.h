@@ -217,6 +217,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 	GLOBAL_UBO_VAR_LIST_DO(mat4,            environment_rotation_matrix) \
 	GLOBAL_UBO_VAR_LIST_DO(mat4,            shadow_map_VP) \
 	GLOBAL_UBO_VAR_LIST_DO(mat4,            security_camera_data[MAX_CAMERAS]) \
+	GLOBAL_UBO_VAR_LIST_DO(ShaderFogVolume, fog_volumes[MAX_FOG_VOLUMES]) \
 	\
 	UBO_CVAR_LIST // WARNING: Do not put any other members into global_ubo after this: the CVAR list is not vec4-aligned
 
@@ -271,6 +272,16 @@ typedef struct {
 	int frame; float padding[3];
 } BspMeshInstance;
 
+typedef struct ShaderFogVolume {
+	vec3_t mins;
+	uint is_active;
+	vec3_t maxs;
+	float pad2;
+	vec3_t color;
+	float pad3;
+	vec4_t density;
+} ShaderFogVolume_t;
+
 #define int_t int32_t
 typedef struct QVKUniformBuffer_s {
 #define GLOBAL_UBO_VAR_LIST_DO(type, name) type##_t name;
@@ -304,6 +315,16 @@ struct ModelInstance {
 struct BspMeshInstance {
 	mat4 M;
 	ivec4 frame;
+};
+
+struct ShaderFogVolume {
+	vec3 mins;
+	uint is_active;
+	vec3 maxs;
+	float pad2;
+	vec3 color;
+	float pad3;
+	vec4 density;
 };
 
 struct GlobalUniformBuffer {

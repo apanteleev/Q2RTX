@@ -21,21 +21,18 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include <shared/shared.h>
 
-#define MAX_FOG_VOLUMES 8
-
 typedef struct
 {
 	vec3_t mins;
 	vec3_t maxs;
 	vec3_t color;
 	float density;
-	int softface; // 0 = none, 1 = x1, 2 = x2, 3 = y1, 4 = y2, 5 = z1, 6 = z2
+	int softface; // 0 = none, 1 = xa, 2 = xb, 3 = ya, 4 = yb, 5 = za, 6 = zb
 } fog_volume_t;
-
-extern fog_volume_t fog_volumes[MAX_FOG_VOLUMES];
 
 void vkpt_fog_init(void);
 void vkpt_fog_shutdown(void);
 void vkpt_fog_reset(void);
+void vkpt_fog_upload(struct ShaderFogVolume* dst);
 
 #endif // __FOG_H_

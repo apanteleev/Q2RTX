@@ -309,6 +309,39 @@ trace_geometry_ray(Ray ray, bool cull_back_faces, int instance_mask)
 #endif
 }
 
+float vmin(vec3 v) { return min(v.x, min(v.y, v.z)); }
+float vmax(vec3 v) { return max(v.x, max(v.y, v.z)); }
+
+void find_fog_volume(inout RayPayloadEffects rp, Ray ray)
+{
+	vec3 inv_dir = vec3(1.0) / ray.direction;
+	float current_t_min	= PRIMARY_RAY_T_MAX * 2;
+	for (int i = 0; i < MAX_FOG_VOLUMES; i++)
+	{
+		const ShaderFogVolume volume = global_ubo.fog_volumes[i];
+
+		if (volume.is_active == 0)
+			return;
+
+		vec3 t1 = (volume.mins - ray.origin) * inv_dir;
+		vec3 t2 = (volume.maxs - ray.origin) * inv_dir;
+		float t_in = vmax(min(t1, t2));
+		float t_out = vmin(max(t1, t2));
+
+		if (t_out > t_in && t_out >= 0)
+		{
+			t_in = max(t_in, 0);
+			if (t_in < current_t_min)
+			{
+				current_t_min = t_in;
+				rp.fog_color = packHalf4x16(vec4(volume.color, 0));
+				rp.fog_bounds = packHalf2x16(vec2(t_in, t_out));
+				rp.fog_density = packHalf2x16(vec2(0, volume.density.w));
+			}
+		}
+	}
+}
+
 vec4
 trace_effects_ray(Ray ray, bool skip_procedural)
 {
@@ -320,6 +353,12 @@ trace_effects_ray(Ray ray, bool skip_procedural)
 
 	ray_payload_effects.transparency = uvec2(0);
 	ray_payload_effects.distances = 0;
+	ray_payload_effects.fog_color = uvec2(0);
+	ray_payload_effects.fog_bounds = 0;
+	ray_payload_effects.fog_density = 0;
+
+	if (!skip_procedural)
+		find_fog_volume(ray_payload_effects, ray);
 
 #ifdef KHR_RAY_QUERY
 
@@ -392,7 +431,10 @@ trace_effects_ray(Ray ray, bool skip_procedural)
 
 #endif
 
-	return get_payload_transparency(ray_payload_effects);
+	if (skip_procedural)
+		return get_payload_transparency(ray_payload_effects);
+
+	return get_payload_transparency_with_fog(ray_payload_effects, ray.t_max);
 }
 
 Ray get_shadow_ray(vec3 p1, vec3 p2, float tmin)
