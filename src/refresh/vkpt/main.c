@@ -32,6 +32,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "system/hunk.h"
 #include "vkpt.h"
 #include "material.h"
+#include "fog.h"
 #include "physical_sky.h"
 #include "../../client/client.h"
 #include "../../client/ui/ui.h"
@@ -3531,6 +3532,8 @@ R_Init_RTX(qboolean total)
 	Cmd_AddCommand("drop_balls", (xcommand_t)&vkpt_drop_shaderballs);
 #endif
 
+	vkpt_fog_init();
+
 	for (int i = 0; i < 256; i++) {
 		qvk.sintab[i] = sinf(i * (2 * M_PI / 255));
 	}
@@ -3555,11 +3558,12 @@ R_Shutdown_RTX(qboolean total)
 	Cmd_RemoveCommand("reload_shader");
 	Cmd_RemoveCommand("reload_textures");
 	Cmd_RemoveCommand("show_pvs");
-	Cmd_RemoveCommand("next_sun");
+	Cmd_RemoveCommand("next_sun");;
 #if CL_RTX_SHADERBALLS
 	Cmd_RemoveCommand("drop_balls");
 #endif
 
+	vkpt_fog_shutdown();
 	MAT_Shutdown();
 	IMG_FreeAll();
 	vkpt_textures_destroy_unused();
