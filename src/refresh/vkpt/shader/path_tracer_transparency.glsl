@@ -23,7 +23,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 vec4 evaluate_fog(in RayPayloadEffects rp, float t1, float t2)
 {
 	vec2 fog_bounds = unpackHalf2x16(rp.fog_bounds);
-	vec2 fog_density = unpackHalf2x16(rp.fog_density);
+	vec2 fog_density = unpackHalf2x16(rp.fog_density) / 65536.0; // same scale as in find_fog_volume(...)
 	vec3 fog_color = unpackHalf4x16(rp.fog_color).rgb;
 
 	t1 = max(t1, fog_bounds.x);
@@ -32,7 +32,11 @@ vec4 evaluate_fog(in RayPayloadEffects rp, float t1, float t2)
 	if (t1 >= t2)
 		return vec4(0);
 
-	float alpha = 1.0 - exp((t1 - t2) * fog_density.y);
+	// solution to the diff equation: dL = -(at+b) dt,
+	// where L is luminance and alpha is (1 - L_out / L_in),
+	// a and b are the density function parameters
+	float alpha = 1.0 - exp((t1 * t1 - t2 * t2) * fog_density.x + (t1 - t2) * fog_density.y);
+	
 	return vec4(fog_color * alpha, alpha);
 }
 

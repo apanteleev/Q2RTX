@@ -336,7 +336,12 @@ void find_fog_volume(inout RayPayloadEffects rp, Ray ray)
 				current_t_min = t_in;
 				rp.fog_color = packHalf4x16(vec4(volume.color, 0));
 				rp.fog_bounds = packHalf2x16(vec2(t_in, t_out));
-				rp.fog_density = packHalf2x16(vec2(0, volume.density.w));
+
+				// Convert the volumetric density function into a 1D function along the ray
+				float density_variable = dot(volume.density.xyz, ray.direction) * 0.5;
+				float density_constant = dot(volume.density.xyz, ray.origin) + volume.density.w;
+				// Scale the density stored here because typical values are very small, in fp16 denormal range
+				rp.fog_density = packHalf2x16(vec2(density_variable, density_constant) * 65536.0);
 			}
 		}
 	}

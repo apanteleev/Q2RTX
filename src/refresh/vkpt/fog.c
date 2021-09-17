@@ -182,7 +182,30 @@ void vkpt_fog_upload(ShaderFogVolume_t* dst)
 		VectorCopy(src->color, dst->color);
 		VectorCopy(src->mins, dst->mins);
 		VectorCopy(src->maxs, dst->maxs);
-		Vector4Set(dst->density, 0.f, 0.f, 0.f, src->density); // TODO: gradient equation
+
+		if (1 <= src->softface && src->softface <= 6)
+		{
+			// Find the axis along which the density gradient is happening: x, y or z
+			int axis = (src->softface - 1) / 2;
+
+			// Find the positions on that axis where the density multiplier is 0 (pos0) and 1 (pos1)
+			float pos0 = (src->softface & 1) ? src->mins[axis] : src->maxs[axis];
+			float pos1 = (src->softface & 1) ? src->maxs[axis] : src->mins[axis];
+
+			// Derive the linear function of the form (ax + b) that describes the density along the axis
+			float a = src->density / (pos1 - pos0);
+			float b = -pos0 * a;
+
+			// Convert the 1D linear funciton into a volumetric one
+			dst->density[axis] = a;
+			dst->density[3] = b;
+		}
+		else
+		{
+			// No density gradient, just store the density with 0 spatial coefficinents
+			Vector4Set(dst->density, 0.f, 0.f, 0.f, src->density);
+		}
+		
 		dst->is_active = 1;
 
 		++dst;
