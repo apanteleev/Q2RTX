@@ -3790,6 +3790,8 @@ R_BeginRegistration_RTX(const char *name)
 	Com_Printf("loading %s\n", name);
 	vkDeviceWaitIdle(qvk.device);
 
+	vkpt_fog_reset();
+
 	Com_AddConfigFile("maps/default.cfg", 0);
 	Com_AddConfigFile(va("maps/%s.cfg", name), 0);
 

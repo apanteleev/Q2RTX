@@ -35,8 +35,8 @@ static const cmd_option_t o_fog[] = {
 	{ "b:x,y,z", "maxs", "fog volume max bounds" },
 	{ "c:r,g,b", "color", "fog color" },
 	{ "d:float", "density", "fog density" },
-	{ "f:option", "softface", "face where the density is zero: none, xa, xb, ya, yb, za, zb" },
-	{ "h", "help" },
+	{ "f:face", "softface", "face where the density is zero: none, xa, xb, ya, yb, za, zb" },
+	{ "h", "help", "display this message" },
 	{ NULL }
 };
 
