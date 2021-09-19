@@ -312,10 +312,12 @@ trace_geometry_ray(Ray ray, bool cull_back_faces, int instance_mask)
 float vmin(vec3 v) { return min(v.x, min(v.y, v.z)); }
 float vmax(vec3 v) { return max(v.x, max(v.y, v.z)); }
 
-void find_fog_volume(inout RayPayloadEffects rp, Ray ray)
+// Loops over the defined fog volumes and finds the two closest ones along the ray.
+// They are stored in the order of min distance in rp.fog1 (closer) and rp.fog2 (further away).
+// If the ray starts in a fog volume, that volume will be rp.fog1 with t_min = ray.t_min.
+void find_fog_volumes(inout RayPayloadEffects rp, Ray ray)
 {
 	vec3 inv_dir = vec3(1.0) / ray.direction;
-	float current_t_min	= PRIMARY_RAY_T_MAX * 2;
 	for (int i = 0; i < MAX_FOG_VOLUMES; i++)
 	{
 		const ShaderFogVolume volume = global_ubo.fog_volumes[i];
@@ -327,21 +329,40 @@ void find_fog_volume(inout RayPayloadEffects rp, Ray ray)
 		vec3 t2 = (volume.maxs - ray.origin) * inv_dir;
 		float t_in = vmax(min(t1, t2));
 		float t_out = vmin(max(t1, t2));
+		t_in = max(t_in, ray.t_min);
+		t_out = min(t_out, ray.t_max);
 
-		if (t_out > t_in && t_out >= 0)
+		if (t_out > t_in)
 		{
-			t_in = max(t_in, 0);
-			if (t_in < current_t_min)
+			vec2 first_t_min_max = unpackHalf2x16(rp.fog1.w);
+			vec2 second_t_min_max = unpackHalf2x16(rp.fog2.w);
+
+			bool replaces_first = t_in < first_t_min_max.x || first_t_min_max.y == 0;
+			bool replaces_second = t_in < second_t_min_max.x || second_t_min_max.y == 0;
+
+			if (replaces_first || replaces_second)
 			{
-				current_t_min = t_in;
-				rp.fog_color = packHalf4x16(vec4(volume.color, 0));
-				rp.fog_bounds = packHalf2x16(vec2(t_in, t_out));
+				uvec4 packed;
+				packed.xy = packHalf4x16(vec4(volume.color, 0));
+				packed.z = packHalf2x16(vec2(t_in, t_out));
 
 				// Convert the volumetric density function into a 1D function along the ray
 				float density_variable = dot(volume.density.xyz, ray.direction) * 0.5;
 				float density_constant = dot(volume.density.xyz, ray.origin) + volume.density.w;
 				// Scale the density stored here because typical values are very small, in fp16 denormal range
-				rp.fog_density = packHalf2x16(vec2(density_variable, density_constant) * 65536.0);
+				packed.w = packHalf2x16(vec2(density_variable, density_constant) * 65536.0);
+
+				if (replaces_first)
+				{
+					// Push fog1 to fog2, replace fog1 with the new volume
+					rp.fog2 = rp.fog1;
+					rp.fog1 = packed;
+				}
+				else // if (replaces_second) -- must be true
+				{
+					// Replace fog2 with the new volume
+					rp.fog2 = packed;
+				}
 			}
 		}
 	}
@@ -358,12 +379,11 @@ trace_effects_ray(Ray ray, bool skip_procedural)
 
 	ray_payload_effects.transparency = uvec2(0);
 	ray_payload_effects.distances = 0;
-	ray_payload_effects.fog_color = uvec2(0);
-	ray_payload_effects.fog_bounds = 0;
-	ray_payload_effects.fog_density = 0;
+	ray_payload_effects.fog1 = uvec4(0);
+	ray_payload_effects.fog2 = uvec4(0);
 
 	if (!skip_procedural)
-		find_fog_volume(ray_payload_effects, ray);
+		find_fog_volumes(ray_payload_effects, ray);
 
 #ifdef KHR_RAY_QUERY
 

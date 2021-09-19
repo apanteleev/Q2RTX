@@ -20,11 +20,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #ifndef PATH_TRACER_TRANSPARENCY_GLSL_
 #define PATH_TRACER_TRANSPARENCY_GLSL_
 
-vec4 evaluate_fog(in RayPayloadEffects rp, float t1, float t2)
+vec4 evaluate_fog(uvec4 fog, float t1, float t2)
 {
-	vec2 fog_bounds = unpackHalf2x16(rp.fog_bounds);
-	vec2 fog_density = unpackHalf2x16(rp.fog_density) / 65536.0; // same scale as in find_fog_volume(...)
-	vec3 fog_color = unpackHalf4x16(rp.fog_color).rgb;
+	vec2 fog_bounds = unpackHalf2x16(fog.z);
+	vec2 fog_density = unpackHalf2x16(fog.w) / 65536.0; // same scale as in find_fog_volume(...)
+	vec3 fog_color = unpackHalf4x16(fog.xy).rgb;
 
 	t1 = max(t1, fog_bounds.x);
 	t2 = min(t2, fog_bounds.y);
@@ -36,8 +36,25 @@ vec4 evaluate_fog(in RayPayloadEffects rp, float t1, float t2)
 	// where L is luminance and alpha is (1 - L_out / L_in),
 	// a and b are the density function parameters
 	float alpha = 1.0 - exp((t1 * t1 - t2 * t2) * fog_density.x + (t1 - t2) * fog_density.y);
-	
+
 	return vec4(fog_color * alpha, alpha);
+}
+
+void blend_fogs(in RayPayloadEffects rp, float t1, float t2, inout vec4 accumulated_color)
+{
+	// Blend the further fog volume first...
+	if (rp.fog2.w != 0) // test the density for being nonzero
+	{
+		vec4 fog_color = evaluate_fog(rp.fog2, t1, t2);
+		accumulated_color = alpha_blend_premultiplied(fog_color, accumulated_color);
+	}
+
+	// ...Then blend the closer volume.
+	if (rp.fog1.w != 0)
+	{
+		vec4 fog_color = evaluate_fog(rp.fog1, t1, t2);
+		accumulated_color = alpha_blend_premultiplied(fog_color, accumulated_color);
+	}
 }
 
 void update_payload_transparency(inout RayPayloadEffects rp, vec4 color, float hitT)
@@ -49,8 +66,7 @@ void update_payload_transparency(inout RayPayloadEffects rp, vec4 color, float h
 	{
 		if (distances.x > 0)
 		{
-			vec4 fog_color = evaluate_fog(rp, hitT, distances.x);
-			accumulated_color = alpha_blend_premultiplied(fog_color, accumulated_color);
+			blend_fogs(rp, hitT, distances.x, accumulated_color);
 		}
 		accumulated_color = alpha_blend_premultiplied(color, accumulated_color);
 		distances.x = hitT;
@@ -59,8 +75,7 @@ void update_payload_transparency(inout RayPayloadEffects rp, vec4 color, float h
 	{
 		if (hitT > distances.y && distances.y > 0)
 		{
-			vec4 fog_color = evaluate_fog(rp, distances.y, hitT);
-			accumulated_color = alpha_blend_premultiplied(accumulated_color, fog_color);
+			blend_fogs(rp, distances.y, hitT, accumulated_color);
 		}
 		accumulated_color = alpha_blend_premultiplied(accumulated_color, color);
 	}
@@ -85,7 +100,7 @@ vec4 get_payload_transparency_with_fog(in RayPayloadEffects rp, float t_max)
 
 	if (distances.y > 0)
 	{
-		accumulator = evaluate_fog(rp, distances.y, t_max);
+		blend_fogs(rp, distances.y, t_max, accumulator);
 
 		vec4 ray_transparency = unpackHalf4x16(rp.transparency);
 		accumulator = alpha_blend_premultiplied(ray_transparency, accumulator);
@@ -93,8 +108,7 @@ vec4 get_payload_transparency_with_fog(in RayPayloadEffects rp, float t_max)
 		current_dist = distances.x;
 	}
 
-	vec4 close_fog = evaluate_fog(rp, 0, current_dist);
-	accumulator = alpha_blend_premultiplied(close_fog, accumulator);
+	blend_fogs(rp, 0, current_dist, accumulator);
 
 	return accumulator;
 }
