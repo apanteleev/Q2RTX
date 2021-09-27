@@ -17,9 +17,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 */
 
 #include "fog.h"
-#include "refresh/refresh.h"
-#include "shader/global_ubo.h"
-#include <common/prompt.h>
+#include "vkpt.h"
 
 #include <string.h>
 
@@ -31,10 +29,10 @@ static const cmd_option_t o_fog[] = {
 	{ "p", "print", "print the selected volume to the console" },
 	{ "r", "reset", "reset the selected volume" },
 	{ "R", "reset-all", "reset all volumes" },
-	{ "a:x,y,z", "mins", "fog volume min bounds" },
-	{ "b:x,y,z", "maxs", "fog volume max bounds" },
+	{ "a:x,y,z", "", "first point on the volume diagonal" },
+	{ "b:x,y,z", "", "second point on the volume diagonal" },
 	{ "c:r,g,b", "color", "fog color" },
-	{ "d:float", "density", "fog density" },
+	{ "d:float", "distance", "distance at which objects in the fog are 50% visible" },
 	{ "f:face", "softface", "face where the density is zero: none, xa, xb, ya, yb, za, zb" },
 	{ "h", "help", "display this message" },
 	{ NULL }
@@ -73,12 +71,12 @@ static void Fog_Cmd_f(void)
 			break;
 		case 'p':
 			if (!volume) goto no_volume;
-			Com_Printf("fog volume %d:\n", index);
-			Com_Printf("    mins %f,%f,%f\n", volume->mins[0], volume->mins[1], volume->mins[2]);
-			Com_Printf("    maxs %f,%f,%f\n", volume->maxs[0], volume->maxs[1], volume->maxs[2]);
-			Com_Printf("    color %f,%f,%f\n", volume->color[0], volume->color[1], volume->color[2]);
-			Com_Printf("    density %f\n", volume->density);
-			Com_Printf("    softface %s\n", o_softface[volume->softface]);
+			Com_Printf("fog -v %d ", index);
+			Com_Printf("-a %.2f,%.2f,%.2f ", volume->point_a[0], volume->point_a[1], volume->point_a[2]);
+			Com_Printf("-b %.2f,%.2f,%.2f ", volume->point_b[0], volume->point_b[1], volume->point_b[2]);
+			Com_Printf("-c %.2f,%.2f,%.2f ", volume->color[0], volume->color[1], volume->color[2]);
+			Com_Printf("-d %.0f ", volume->half_extinction_distance);
+			Com_Printf("-f %s\n", o_softface[volume->softface]);
 			break;
 		case 'r':
 			if (!volume) goto no_volume;
@@ -90,22 +88,32 @@ static void Fog_Cmd_f(void)
 		case 'a':
 			if (!volume) goto no_volume;
 			if (3 != sscanf(cmd_optarg, "%f,%f,%f", &x, &y, &z)) {
+				if (strcmp(cmd_optarg, "here") == 0) {
+					VectorCopy(vkpt_refdef.fd->vieworg, volume->point_a);
+					continue;
+				}
+
 				Com_WPrintf("invalid coordinates '%s'\n", cmd_optarg);
 				return;
 			}
-			volume->mins[0] = x;
-			volume->mins[1] = y;
-			volume->mins[2] = z;
+			volume->point_a[0] = x;
+			volume->point_a[1] = y;
+			volume->point_a[2] = z;
 			break;
 		case 'b':
 			if (!volume) goto no_volume;
 			if (3 != sscanf(cmd_optarg, "%f,%f,%f", &x, &y, &z)) {
+				if (strcmp(cmd_optarg, "here") == 0) {
+					VectorCopy(vkpt_refdef.fd->vieworg, volume->point_b);
+					continue;
+				}
+
 				Com_WPrintf("invalid coordinates '%s'\n", cmd_optarg);
 				return;
 			}
-			volume->maxs[0] = x;
-			volume->maxs[1] = y;
-			volume->maxs[2] = z;
+			volume->point_b[0] = x;
+			volume->point_b[1] = y;
+			volume->point_b[2] = z;
 			break;
 		case 'c':
 			if (!volume) goto no_volume;
@@ -120,10 +128,10 @@ static void Fog_Cmd_f(void)
 		case 'd':
 			if (!volume) goto no_volume;
 			if (1 != sscanf(cmd_optarg, "%f", &x)) {
-				Com_WPrintf("invalid density '%s'\n", cmd_optarg);
+				Com_WPrintf("invalid distance '%s'\n", cmd_optarg);
 				return;
 			}
-			volume->density = x;
+			volume->half_extinction_distance = x;
 			break;
 		case 'f':
 			if (!volume) goto no_volume;
@@ -176,12 +184,21 @@ void vkpt_fog_upload(ShaderFogVolume_t* dst)
 	for (int i = 0; i < MAX_FOG_VOLUMES; i++)
 	{
 		const fog_volume_t* src = fog_volumes + i;
-		if (src->density <= 0.f || src->mins[0] >= src->maxs[0] || src->mins[1] >= src->maxs[1] || src->mins[2] >= src->maxs[2])
+		if (src->half_extinction_distance <= 0.f || src->point_a[0] == src->point_b[0] || src->point_a[1] == src->point_b[1] || src->point_a[2] == src->point_b[2])
 			continue;
 
 		VectorCopy(src->color, dst->color);
-		VectorCopy(src->mins, dst->mins);
-		VectorCopy(src->maxs, dst->maxs);
+
+		// Find the min and max bounds to support specifying two points on any diagonal of the volume
+		for (int axis = 0; axis < 3; axis++)
+		{
+			dst->mins[axis] = min(src->point_a[axis], src->point_b[axis]);
+			dst->maxs[axis] = max(src->point_a[axis], src->point_b[axis]);
+		}
+
+		// Convert the half-extinction distance into density
+		// exp(-kx) = 0.5   =>   k = -ln(0.5) / x
+		float density = 0.69315f / src->half_extinction_distance;
 
 		if (1 <= src->softface && src->softface <= 6)
 		{
@@ -189,11 +206,11 @@ void vkpt_fog_upload(ShaderFogVolume_t* dst)
 			int axis = (src->softface - 1) / 2;
 
 			// Find the positions on that axis where the density multiplier is 0 (pos0) and 1 (pos1)
-			float pos0 = (src->softface & 1) ? src->mins[axis] : src->maxs[axis];
-			float pos1 = (src->softface & 1) ? src->maxs[axis] : src->mins[axis];
+			float pos0 = (src->softface & 1) ? src->point_a[axis] : src->point_b[axis];
+			float pos1 = (src->softface & 1) ? src->point_b[axis] : src->point_a[axis];
 
 			// Derive the linear function of the form (ax + b) that describes the density along the axis
-			float a = src->density / (pos1 - pos0);
+			float a = density / (pos1 - pos0);
 			float b = -pos0 * a;
 
 			// Convert the 1D linear funciton into a volumetric one
@@ -203,7 +220,7 @@ void vkpt_fog_upload(ShaderFogVolume_t* dst)
 		else
 		{
 			// No density gradient, just store the density with 0 spatial coefficinents
-			Vector4Set(dst->density, 0.f, 0.f, 0.f, src->density);
+			Vector4Set(dst->density, 0.f, 0.f, 0.f, density);
 		}
 		
 		dst->is_active = 1;

@@ -23,10 +23,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 typedef struct
 {
-	vec3_t mins;
-	vec3_t maxs;
+	vec3_t point_a;
+	vec3_t point_b;
 	vec3_t color;
-	float density;
+	float half_extinction_distance;
 	int softface; // 0 = none, 1 = xa, 2 = xb, 3 = ya, 4 = yb, 5 = za, 6 = zb
 } fog_volume_t;
 

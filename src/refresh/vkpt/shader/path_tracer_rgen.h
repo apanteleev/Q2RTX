@@ -343,7 +343,7 @@ void find_fog_volumes(inout RayPayloadEffects rp, Ray ray)
 			if (replaces_first || replaces_second)
 			{
 				uvec4 packed;
-				packed.xy = packHalf4x16(vec4(volume.color, 0));
+				packed.xy = packHalf4x16(vec4(volume.color * global_ubo.pt_fog_brightness, 0));
 				packed.z = packHalf2x16(vec2(t_in, t_out));
 
 				// Convert the volumetric density function into a 1D function along the ray
