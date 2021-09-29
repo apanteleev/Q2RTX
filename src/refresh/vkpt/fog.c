@@ -217,7 +217,7 @@ void vkpt_fog_reset(void)
 	memset(fog_volumes, 0, sizeof(fog_volumes));
 }
 
-void vkpt_fog_upload(ShaderFogVolume_t* dst)
+void vkpt_fog_upload(struct ShaderFogVolume* dst)
 {
 	memset(dst, 0, sizeof(ShaderFogVolume_t) * MAX_FOG_VOLUMES);
 	

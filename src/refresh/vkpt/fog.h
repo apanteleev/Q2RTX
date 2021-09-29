@@ -30,6 +30,8 @@ typedef struct
 	int softface; // 0 = none, 1 = xa, 2 = xb, 3 = ya, 4 = yb, 5 = za, 6 = zb
 } fog_volume_t;
 
+struct ShaderFogVolume;
+
 void vkpt_fog_init(void);
 void vkpt_fog_shutdown(void);
 void vkpt_fog_reset(void);
