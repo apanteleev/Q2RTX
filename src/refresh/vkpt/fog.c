@@ -21,6 +21,46 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include <string.h>
 
+/*
+This file implements host-side control of the local fog volumes. The volumes
+are manipulated using the "fog" console command and are reset before loading
+a new map. Typically, the volumes should be defined using a map-specific config file.
+
+Up to MAX_FOG_VOLUMES volumes can be defined, and up to 2 volumes are supported
+by the renderer per ray. Use volumes with caution to avoid placing more than
+two in the same area.
+
+A fog volume is an axis-aligned box filled with uniform or gradient fog.
+The volume is defined using two points on any diagonal of said box, a and b.
+The fog parameters: color, density and gradient, are defined independently.
+See the fog command help message for the options list.
+
+
+Suggested workflow for defining a fog volume without access to a map editor
+is to place the camera into the diagonal points, capturing each point:
+
+    (place the camera in the first point)
+    > fog -v <index> -a here
+    (move the camera)
+    > fog -v <index> -b here
+
+Then set the color and density as necessary, and use "fog -v <index> -p"
+to print all the volume parameters. The output of that commnad can be copied
+from the console directly into a map config file.
+
+
+On the renderer side, the fog volumes are processed for the primary rays and for
+the reflection, refraction, and camera rays. The implementation starts in
+trace_effects_ray(...) - see path_tracer_rgen.h. That function first finds the
+volumes that intersect with the ray, and selects the two closest volumes.
+These two volumes are passed through the ray payload to the any-hit shaders
+that deal with transparent effects such as explosions. These any-hit shaders
+will accumulate the transparent effects along the ray and any fog that is
+between these effects. After that's done, the fog between the ray origin and
+the first effect is blended over the effects, and the fog between the last
+effect and the end of the ray is blended under the effects.
+*/
+
 fog_volume_t fog_volumes[MAX_FOG_VOLUMES];
 
 
@@ -29,8 +69,8 @@ static const cmd_option_t o_fog[] = {
 	{ "p", "print", "print the selected volume to the console" },
 	{ "r", "reset", "reset the selected volume" },
 	{ "R", "reset-all", "reset all volumes" },
-	{ "a:x,y,z", "", "first point on the volume diagonal" },
-	{ "b:x,y,z", "", "second point on the volume diagonal" },
+	{ "a:x,y,z", "", "first point on the volume diagonal, or 'here'" },
+	{ "b:x,y,z", "", "second point on the volume diagonal, or 'here'" },
 	{ "c:r,g,b", "color", "fog color" },
 	{ "d:float", "distance", "distance at which objects in the fog are 50% visible" },
 	{ "f:face", "softface", "face where the density is zero: none, xa, xb, ya, yb, za, zb" },
