@@ -289,4 +289,28 @@ typedef struct {
     uint32_t    texinfo;
 } dbrushside_qbsp_t;
 
+typedef struct {
+    char id[4];  // 'BSPX'
+    uint32_t numlumps;
+} bspx_header_t;
+
+typedef struct {
+    char lumpname[24]; // up to 23 chars, zero-padded
+    uint32_t fileofs;       // from file start
+    uint32_t filelen;
+} bspx_lump_t;
+
+typedef struct {
+	uint32_t num_vectors;
+	/* followed by:
+		vec3 vectors[num_vectors]
+
+		for each face in bsp {
+			u32 normal_index[num_verts]
+			u32 tangent_index[num_verts]
+			u32 bitangent_index[num_verts]
+		}
+	 */
+} bspx_facenormals_header_t;
+
 #endif // FORMAT_BSP_H
