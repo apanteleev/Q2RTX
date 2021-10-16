@@ -1532,25 +1532,17 @@ static void BSP_LoadBspxNormals(bsp_t* bsp, const void* data, size_t data_size)
 	const float* vectors = (const float*)((const bspx_facenormals_header_t*)data + 1);
 	memcpy(bsp->basisvectors, vectors, sizeof(vec3_t) * header->num_vectors);
 
-	// Copy and re-pack the indices data
+	// Copy the indices data
 	const uint32_t* indices = (const uint32_t*)(vectors + header->num_vectors * 3);
-    mbasis_t* basis = bsp->bases;
+    memcpy(bsp->bases, indices, sizeof(uint32_t) * 3 * total_vertices);
 
+	// Add basis indexing
+	int basis_offset = 0;
 	for (int i = 0; i < bsp->numfaces; i++)
 	{
 		mface_t* face = bsp->faces + i;
-		face->firstbasis = (int)(basis - bsp->bases);
-
-		for (int k = 0; k < face->numsurfedges; k++)
-		{
-			basis->normal = indices[k];
-			basis->tangent = indices[k + face->numsurfedges];
-			basis->bitangent = indices[k + face->numsurfedges * 2];
-
-			++basis;
-		}
-
-		indices += face->numsurfedges * 3;
+		face->firstbasis = basis_offset;
+		basis_offset += face->numsurfedges;
 	}
 }
 
