@@ -161,9 +161,6 @@ create_poly(
 
 	float pos_center[3] = { 0 };
 	float tc_center[2];
-	vec3_t normal_center = { 0 };
-	vec3_t tangent_center = { 0 };
-	vec3_t bitangent_center = { 0 };
 
 	for (int i = 0; i < surf->numsurfedges; i++) {
 		msurfedge_t *src_surfedge = surf->firstsurfedge + i;
@@ -184,18 +181,9 @@ create_poly(
 
 		if (bsp->basisvectors)
 		{
-			const mbasis_t* basis = bsp->bases + surf->firstbasis + i;
-			bases[i] = *basis;
-			
-			const vec3_t* normal = bsp->basisvectors + basis->normal;
-			const vec3_t* tangent = bsp->basisvectors + basis->tangent;
-			const vec3_t* bitangent = bsp->basisvectors + basis->bitangent;
-
-			VectorAdd(normal_center, *normal, normal_center);
-			VectorAdd(tangent_center, *tangent, tangent_center);
-			VectorAdd(bitangent_center, *bitangent, bitangent_center);
+			bases[i] = *(bsp->bases + surf->firstbasis + i);
 		}
-
+		
 #if DUMP_WORLD_MESH_TO_OBJ
 		if (obj_dump_file)
 		{
@@ -224,13 +212,15 @@ create_poly(
 
 	if (bsp->basisvectors)
 	{
-		VectorNormalize(normal_center);
-		VectorNormalize(tangent_center);
-		VectorNormalize(bitangent_center);
-
+		// Check the handedness using the basis of the first vertex
+		
+		const vec3_t* normal = bsp->basisvectors + bases->normal;
+		const vec3_t* tangent = bsp->basisvectors + bases->tangent;
+		const vec3_t* bitangent = bsp->basisvectors + bases->bitangent;
+		
 		vec3_t cross;
-		CrossProduct(normal_center, tangent_center, cross);
-		float dot = DotProduct(cross, bitangent_center);
+		CrossProduct(*normal, *tangent, cross);
+		float dot = DotProduct(cross, *bitangent);
 
 		if (dot < 0.0f)
 		{
@@ -263,9 +253,13 @@ create_poly(
     } while(0)
 
 	int k = 0;
-	/* switch between triangle fan around center or first vertex */
+	
+	// Switch between triangle fan around center or first vertex.
+	// Can't use center the center-based fan if normals/tangents are provided
+	// because it's not trivial to compute the normal and tangent at the center
+	// of the polygon.
 	//int tess_center = 0;
-	int tess_center = num_vertices > 4 && !is_sky;
+	int tess_center = num_vertices > 4 && !is_sky && !bsp->basisvectors;
 
 	const int num_triangles = tess_center
 		? num_vertices
@@ -286,11 +280,11 @@ create_poly(
 		CP_T(k, tess_center ? tc_center : tex_coords);
 		if (write_normals)
 		{
-			const mbasis_t* basis = bases + i;
+			const mbasis_t* basis = bases;
 			const vec3_t* normal = bsp->basisvectors + basis->normal;
 			const vec3_t* tangent = bsp->basisvectors + basis->tangent;
-			if (normals_out) normals_out[k] = encode_normal(tess_center ? normal_center : *normal);
-			if (tangents_out) tangents_out[k] = encode_normal(tess_center ? tangent_center : *tangent);
+			if (normals_out) normals_out[k] = encode_normal(*normal);
+			if (tangents_out) tangents_out[k] = encode_normal(*tangent);
 		}
 		k++;
 
